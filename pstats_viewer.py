@@ -114,12 +114,29 @@ class MyHandler(BaseHTTPRequestHandler):
         'handle: /$'
         table = []
 
-        sort_index = ['cc', 'nc', 'tt', 'ct'].index(self.query.get('sort', 'ct'))
+        sort_index = ['cc', 'nc', 'tt', 'ct', 'epc', 'ipc'].index(
+            self.query.get('sort', 'ct'))
         print 'sort_index', sort_index
 
-        self.print_list.sort(
-            key=lambda func: self.stats.stats[func][sort_index],
-            reverse=True)
+        # EPC/IPC (exclusive/inclusive per call) are fake fields that need to
+        # be calculated
+        if sort_index >= 4:
+            if sort_index == 4:
+                self.print_list.sort(
+                    key=lambda func: (self.stats.stats[func][2] /
+                                 self.stats.stats[func][0]),
+                    reverse=True
+                )
+            elif sort_index == 5:
+                self.print_list.sort(
+                    key=lambda func: (self.stats.stats[func][3] /
+                                 self.stats.stats[func][0]),
+                    reverse=True
+                )
+        else:
+            self.print_list.sort(
+                key=lambda func: self.stats.stats[func][sort_index],
+                reverse=True)
 
         for func in self.print_list:
             file, line, func_name = func
@@ -154,8 +171,8 @@ class MyHandler(BaseHTTPRequestHandler):
   <th><a href="?sort=ct">inclusive time</a></th>
   <th><a href="?sort=cc">primitive calls</a></th>
   <th><a href="?sort=nc">total calls</a></th>
-  <th>exclusive per call</th>
-  <th>inclusive per call</th>
+  <th><a href="?sort=epc">exclusive per call</th>
+  <th><a href="?sort=ipc">inclusive per call</th>
 </tr>
 %s
 </table>
