@@ -148,8 +148,8 @@ class MyHandler(BaseHTTPRequestHandler):
                 formatTimeAndPercent(inclusive_time, self.total_time),
                 primitive_calls,
                 total_calls,
-                formatTime(exclusive_time / primitive_calls),
-                formatTime(inclusive_time / primitive_calls))))
+                formatTime(exclusive_time / (primitive_calls or 1)),
+                formatTime(inclusive_time / (primitive_calls or 1)))))
 
             table.append(row)
 
