@@ -9,6 +9,7 @@ import sys
 import re
 import threading
 import traceback
+import urllib
 import urlparse
 
 PORT = 4040
@@ -86,7 +87,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 if mo is None:
                     print 'did not handle %s with %s' % (path, path_re)
                     continue
-                print 'handling %s with %s (%s)', (path, path_re, mo.groups())
+                print 'handling %s with %s (%s)' % (path, path_re, mo.groups())
 
                 try:
                     temp = StringIO()
@@ -147,8 +148,14 @@ class MyHandler(BaseHTTPRequestHandler):
                 key=lambda func: self.stats.stats[func][sort_index],
                 reverse=True)
 
+        filter_exp = self.query.get('filter', None)
+        if filter_exp:
+            filter_exp = urllib.unquote(filter_exp)
+            print 'filter_exp:', filter_exp
         for func in self.print_list:
-            file, line, func_name = func
+            # file, line, func_name = func
+            if filter_exp and not re.search(filter_exp, formatfunc(func)):
+                continue
             primitive_calls, total_calls, exclusive_time, inclusive_time, callers = self.stats.stats[func]
 
             row = wrapTag('tr', ''.join(wrapTag('td', cell) for cell in (
@@ -165,7 +172,16 @@ class MyHandler(BaseHTTPRequestHandler):
         data = '''\
 <html>
 <head>
-<style>
+<style type="text/css">
+  form {
+    display: inline;
+    padding: 0px;
+    spacing: 0px;
+    overflow: hidden;
+  }
+  table {
+    display: inline;
+  }
 </style>
 </head>
 <body>
@@ -173,6 +189,13 @@ class MyHandler(BaseHTTPRequestHandler):
 <ul>
 <li>Total time: %s</li>
 </ul>
+
+<form action=/>
+  Filter: <br>
+  <input type="text" name="filter" method="GET" /><br>
+  <input type="submit" /><br>
+</form>
+
 <table>
 <tr>
   <th>file:line:function</th>
