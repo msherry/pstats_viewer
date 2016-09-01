@@ -13,21 +13,27 @@ import urlparse
 
 PORT = 4040
 
+
 def htmlquote(fn):
     return fn.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
 
 def shrink(s):
     if len(s) < 40:
         return s
     return s[:20] + '...' + s[-20:]
 
+
 def formatfunc(func):
     file, line, func_name = func
     containing_dir = os.path.basename(os.path.dirname(file).rstrip('/'))
-    return '%s:%s:%s' % (os.path.join(containing_dir, os.path.basename(file)), line, htmlquote(shrink(func_name)))
+    return '%s:%s:%s' % (os.path.join(containing_dir, os.path.basename(file)),
+                         line, htmlquote(shrink(func_name)))
+
 
 def formatTime(dt):
     return '%.2fs' % dt
+
 
 def formatTimeAndPercent(dt, total):
     percent = "(%.1f%%)" % (100.0 * dt / total)
@@ -35,8 +41,10 @@ def formatTimeAndPercent(dt, total):
         percent = ''
     return '%s&nbsp;<font color=#808080>%s</a>' % (formatTime(dt), percent)
 
+
 def wrapTag(tag, body):
     return '<%s>%s</%s>' % (tag, body, tag)
+
 
 class MyHandler(BaseHTTPRequestHandler):
     def __init__(self, stats=None, *args, **kw):
@@ -76,7 +84,7 @@ class MyHandler(BaseHTTPRequestHandler):
                 path_re = path_re.strip()
                 mo = re.match(path_re, path)
                 if mo is None:
-                    #print 'did not handle %s with %s' % (path, path_re)
+                    print 'did not handle %s with %s' % (path, path_re)
                     continue
                 print 'handling %s with %s (%s)', (path, path_re, mo.groups())
 
@@ -108,7 +116,8 @@ class MyHandler(BaseHTTPRequestHandler):
         _, _, func_name = func
         title = func_name
 
-        return '<a title="%s" href="/func/%s">%s</a>' % (title, self.func_to_id[func], formatfunc(func))
+        return '<a title="%s" href="/func/%s">%s</a>' % (
+            title, self.func_to_id[func], formatfunc(func))
 
     def index(self):
         'handle: /$'
@@ -123,14 +132,14 @@ class MyHandler(BaseHTTPRequestHandler):
         if sort_index >= 4:
             if sort_index == 4:
                 self.print_list.sort(
-                    key=lambda func: (self.stats.stats[func][2] /
-                                 self.stats.stats[func][0]),
+                    key=lambda func: (
+                        self.stats.stats[func][2] / self.stats.stats[func][0]),
                     reverse=True
                 )
             elif sort_index == 5:
                 self.print_list.sort(
-                    key=lambda func: (self.stats.stats[func][3] /
-                                 self.stats.stats[func][0]),
+                    key=lambda func: (
+                        self.stats.stats[func][3] / self.stats.stats[func][0]),
                     reverse=True
                 )
         else:
@@ -261,8 +270,9 @@ def startThread(fn):
     thread.start()
     return thread
 
+
 def main(argv):
-    statsfile  = argv[1]
+    statsfile = argv[1]
     port = argv[2:]
     if port == []:
         port = PORT
@@ -274,7 +284,7 @@ def main(argv):
     httpd = HTTPServer(
         ('', port),
         lambda *a, **kw: MyHandler(stats, *a, **kw))
-    serve_thread  = startThread(httpd.serve_forever)
+    serve_thread = startThread(httpd.serve_forever)
 
     while serve_thread.isAlive():
         serve_thread.join(timeout=1)
