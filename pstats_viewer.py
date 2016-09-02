@@ -228,15 +228,19 @@ class MyHandler(BaseHTTPRequestHandler):
         def buildFunctionTable(items):
             callersTable = []
             for caller, (cc, nc, tt, ct) in sortedByInclusive(items):
-                callersTable.append(wrapTag('tr', ''.join(wrapTag('td', cell)
-                                                          for cell in (
-                    self.getFunctionLink(caller),
-                    formatTimeAndPercent(tt, self.total_time),
-                    formatTimeAndPercent(ct, self.total_time),
-                    cc,
-                    nc,
-                    formatTime(tt / cc),
-                    formatTime(ct / cc)))))
+                tag = wrapTag(
+                    'tr', ''.join(
+                        wrapTag('td', cell)
+                        for cell in (
+                            self.getFunctionLink(caller),
+                            formatTimeAndPercent(tt, self.total_time),
+                            formatTimeAndPercent(ct, self.total_time),
+                            cc,
+                            nc,
+                            # ncalls shouldn't be 0, but I guess it can be
+                            formatTime(tt / (cc or 1)),
+                            formatTime(ct / (cc or 1)))))
+                callersTable.append(tag)
             return '\n'.join(callersTable)
 
         caller_stats = [(c, self.stats.stats[c][:4]) for c in callers]
