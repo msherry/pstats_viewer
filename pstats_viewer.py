@@ -14,6 +14,12 @@ import urlparse
 
 PORT = 4040
 
+DIR = os.path.dirname(__file__)
+
+INDEX_PAGE_HTML = open(os.path.join(DIR, 'html/index.html')).read()
+
+FUNCTION_PAGE_HTML = open(os.path.join(DIR, 'html/function.html')).read()
+
 
 def htmlquote(fn):
     return fn.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -59,11 +65,9 @@ class MyHandler(BaseHTTPRequestHandler):
         self.func_to_id = {}
         self.id_to_func = {}
 
-        i = 0
-        for func in self.print_list:
+        for i, func in enumerate(self.print_list):
             self.id_to_func[i] = func
             self.func_to_id[func] = i
-            i += 1
 
         BaseHTTPRequestHandler.__init__(self, *args, **kw)
 
@@ -130,103 +134,47 @@ class MyHandler(BaseHTTPRequestHandler):
 
         # EPC/IPC (exclusive/inclusive per call) are fake fields that need to
         # be calculated
-        if sort_index >= 4:
-            if sort_index == 4:
-                self.print_list.sort(
-                    key=lambda func: (
-                        self.stats.stats[func][2] / self.stats.stats[func][0]),
-                    reverse=True
-                )
-            elif sort_index == 5:
-                self.print_list.sort(
-                    key=lambda func: (
-                        self.stats.stats[func][3] / self.stats.stats[func][0]),
-                    reverse=True
-                )
+        if sort_index == 4:     # EPC
+            self.print_list.sort(
+                key=lambda func: (
+                    self.stats.stats[func][2] / self.stats.stats[func][0]),
+                reverse=True
+            )
+        elif sort_index == 5:   # IPC
+            self.print_list.sort(
+                key=lambda func: (
+                    self.stats.stats[func][3] / self.stats.stats[func][0]),
+                reverse=True
+            )
         else:
             self.print_list.sort(
                 key=lambda func: self.stats.stats[func][sort_index],
                 reverse=True)
 
-        filter_exp = self.query.get('filter', None)
+        filter_exp = self.query.get('filter', '')
         if filter_exp:
             filter_exp = urllib.unquote(filter_exp)
             print 'filter_exp:', filter_exp
         for func in self.print_list:
-            # file, line, func_name = func
             if filter_exp and not re.search(filter_exp, formatfunc(func)):
                 continue
             primitive_calls, total_calls, exclusive_time, inclusive_time, callers = self.stats.stats[func]
 
-            row = wrapTag('tr', ''.join(wrapTag('td', cell) for cell in (
-                self.getFunctionLink(func),
-                formatTimeAndPercent(exclusive_time, self.total_time),
-                formatTimeAndPercent(inclusive_time, self.total_time),
-                primitive_calls,
-                total_calls,
-                formatTime(exclusive_time / (primitive_calls or 1)),
-                formatTime(inclusive_time / (primitive_calls or 1)))))
+            row = wrapTag('tr', ''.join(
+                wrapTag('td', cell) for cell in (
+                    self.getFunctionLink(func),
+                    formatTimeAndPercent(exclusive_time, self.total_time),
+                    formatTimeAndPercent(inclusive_time, self.total_time),
+                    primitive_calls,
+                    total_calls,
+                    formatTime(exclusive_time / (primitive_calls or 1)),
+                    formatTime(inclusive_time / (primitive_calls or 1)))))
 
             table.append(row)
 
-        data = '''\
-<html>
-<head>
-<script type="text/javascript">
-function querySt(fn) {
-  qry = window.location.search.substring(1);
-  gy = qry.split("&");
-
-  for (i=0;i<gy.length;i++) {
-      ft = gy[i].split("=");
-      if (ft[0] == fn) {
-          return decodeURIComponent(ft[1]);
-      }
-  }
-  return "";
-}
-</script>
-<style type="text/css">
-  form {
-    display: inline;
-    padding: 0px;
-    spacing: 0px;
-    overflow: hidden;
-  }
-  table {
-    display: inline;
-  }
-</style>
-</head>
-<body>
-<h1>%s</h1>
-<ul>
-<li>Total time: %s</li>
-</ul>
-
-<form action=/>
-  Regex filter: <br>
-  <input type="text" name="filter" method="GET" id="formField"/><br>
-  <input type="submit" /><br>
-</form>
-<script type="text/javascript">
-  document.getElementById("formField").value = querySt("filter");
-</script>
-<table>
-<tr>
-  <th>file:line:function</th>
-  <th><a href="?sort=tt">exclusive time</a></th>
-  <th><a href="?sort=ct">inclusive time</a></th>
-  <th><a href="?sort=cc">primitive calls</a></th>
-  <th><a href="?sort=nc">total calls</a></th>
-  <th><a href="?sort=epc">exclusive per call</th>
-  <th><a href="?sort=ipc">inclusive per call</th>
-</tr>
-%s
-</table>
-</body>
-</html>
-''' % (self.filename, formatTime(self.total_time), '\n'.join(table))
+        data = INDEX_PAGE_HTML.format(
+            filename=self.filename, total_time=formatTime(self.total_time),
+            filter_exp=filter_exp, table='\n'.join(table))
         self.wfile.write(data)
 
     def func(self, id):
@@ -263,48 +211,11 @@ function querySt(fn) {
         callersTable = buildFunctionTable(caller_stats)
         calleesTable = buildFunctionTable(callees.items())
 
-        page = '''\
-<html>
-<body>
-<a href="/">Index</a>
-<h1>%s</h1>
-<ul>
-<li>Primitive calls: %s</li>
-<li>Total calls: %s</li>
-<li>Exclusive time: %s</li>
-<li>Inclusive time: %s</li>
-</ul>
-<h2>Callers</h2>
-<table>
-<tr>
-<th>Function</th>
-<th>Exclusive time</th>
-<th>Inclusive time</th>
-<th>Primitive calls</th>
-<th>Total calls</th>
-<th>Exclusive per call</th>
-<th>Inclusive per call</th>
-</tr>
-%s
-</table>
-<h2>Callees</h2>
-<table>
-<tr>
-<th>Function</th>
-<th>Exclusive time</th>
-<th>Inclusive time</th>
-<th>Primitive calls</th>
-<th>Total calls</th>
-<th>Exclusive per call</th>
-<th>Inclusive per call</th>
-</tr>
-%s
-</table>
-</body>
-</html>
-''' % (formatfunc(func), f_cc, f_nc, f_tt, f_ct, callersTable, calleesTable)
+        page = FUNCTION_PAGE_HTML.format(
+            func=formatfunc(func), primitive=f_cc, total=f_nc, exclusive=f_tt,
+            inclusive=f_ct, callers=callersTable, callees=calleesTable)
 
-        print >> self.wfile, page
+        self.wfile.write(page)
 
 
 def startThread(fn):

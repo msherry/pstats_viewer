@@ -1,0 +1,38 @@
+<html>
+<body>
+<a href="/">Index</a>
+<h1>{func}</h1>
+<ul>
+<li>Primitive calls: {primitive}</li>
+<li>Total calls: {total}</li>
+<li>Exclusive time: {exclusive}</li>
+<li>Inclusive time: {inclusive}</li>
+</ul>
+<h2>Callers</h2>
+<table>
+<tr>
+<th>Function</th>
+<th>Exclusive time</th>
+<th>Inclusive time</th>
+<th>Primitive calls</th>
+<th>Total calls</th>
+<th>Exclusive per call</th>
+<th>Inclusive per call</th>
+</tr>
+{callers}
+</table>
+<h2>Callees</h2>
+<table>
+<tr>
+<th>Function</th>
+<th>Exclusive time</th>
+<th>Inclusive time</th>
+<th>Primitive calls</th>
+<th>Total calls</th>
+<th>Exclusive per call</th>
+<th>Inclusive per call</th>
+</tr>
+{callees}
+</table>
+</body>
+</html>
