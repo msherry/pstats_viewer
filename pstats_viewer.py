@@ -37,19 +37,25 @@ def formatfunc(func):
                          line, htmlquote(shrink(func_name)))
 
 
+def wrapTag(tag, body, **kwargs):
+    attrs = ''
+    if kwargs:
+        attrs = ' ' + ' '.join('%s="%s"' % (key, value)
+                               for key, value in kwargs.iteritems())
+    open_tag = '<%s%s>' % (tag, attrs)
+    return '%s%s</%s>' % (open_tag, body, tag)
+
+
 def formatTime(dt):
     return '%.2fs' % dt
 
 
 def formatTimeAndPercent(dt, total):
-    percent = "(%.1f%%)" % (100.0 * dt / total)
+    percent = '(%.1f%%)' % (100.0 * dt / total)
     if percent == '(0.0%)':
         percent = ''
-    return '%s&nbsp;<font color=#808080>%s</a>' % (formatTime(dt), percent)
-
-
-def wrapTag(tag, body):
-    return '<%s>%s</%s>' % (tag, body, tag)
+    return '%s&nbsp;%s' % (
+        formatTime(dt), wrapTag('font', percent, color='#808080'))
 
 
 class MyHandler(BaseHTTPRequestHandler):
@@ -97,9 +103,10 @@ class MyHandler(BaseHTTPRequestHandler):
     def getFunctionLink(self, func):
         _file, _line, func_name = func
         title = func_name
+        func_id = self.func_to_id[func]
 
-        return '<a title="%s" href="/func/%s">%s</a>' % (
-            title, self.func_to_id[func], formatfunc(func))
+        return wrapTag(
+            'a', formatfunc(func), title=title, href='/func/%s' % func_id)
 
     def do_GET(self):
         path, query = urlparse.urlsplit(self.path)[2:4]
