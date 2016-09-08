@@ -74,7 +74,7 @@ class MyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         path, query = urlparse.urlsplit(self.path)[2:4]
         self.query = {}
-        for elt in query.split(';'):
+        for elt in query.split('&'):
             if not elt:
                 continue
             key, value = elt.split('=', 1)
