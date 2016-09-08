@@ -56,7 +56,6 @@ def wrapTag(tag, body):
 class MyHandler(BaseHTTPRequestHandler):
     def __init__(self, stats=None, *args, **kw):
         self.stats = stats
-        self.stats.stream = StringIO()
         self.stats.calc_callees()
         self.total_time = self.stats.total_tt
         (self.filename,) = self.stats.files
@@ -96,6 +95,13 @@ class MyHandler(BaseHTTPRequestHandler):
         print 'no handler for %s' % path
         return None, None
 
+    def getFunctionLink(self, func):
+        _file, _line, func_name = func
+        title = func_name
+
+        return '<a title="%s" href="/func/%s">%s</a>' % (
+            title, self.func_to_id[func], formatfunc(func))
+
     def do_GET(self):
         path, query = urlparse.urlsplit(self.path)[2:4]
         self.query = {}
@@ -129,13 +135,6 @@ class MyHandler(BaseHTTPRequestHandler):
             self.end_headers()
             traceback.print_exc(file=self.wfile)
 
-    def getFunctionLink(self, func):
-        _file, _line, func_name = func
-        title = func_name
-
-        return '<a title="%s" href="/func/%s">%s</a>' % (
-            title, self.func_to_id[func], formatfunc(func))
-
     def index(self):
         'handle: /$'
         table = []
@@ -146,7 +145,11 @@ class MyHandler(BaseHTTPRequestHandler):
 
         # EPC/IPC (exclusive/inclusive per call) are fake fields that need to
         # be calculated
-        if sort_index == 4:     # EPC
+        if sort_index < 4:
+            self.print_list.sort(
+                key=lambda func: self.stats.stats[func][sort_index],
+                reverse=True)
+        elif sort_index == 4:     # EPC
             self.print_list.sort(
                 key=lambda func: (
                     self.stats.stats[func][2] / self.stats.stats[func][0]),
@@ -159,9 +162,8 @@ class MyHandler(BaseHTTPRequestHandler):
                 reverse=True
             )
         else:
-            self.print_list.sort(
-                key=lambda func: self.stats.stats[func][sort_index],
-                reverse=True)
+            # Shouldn't get here
+            pass
 
         filter_exp = self.query.get('filter', '')
         if filter_exp:
@@ -170,7 +172,8 @@ class MyHandler(BaseHTTPRequestHandler):
         for func in self.print_list:
             if filter_exp and not re.search(filter_exp, formatfunc(func)):
                 continue
-            primitive_calls, total_calls, exclusive_time, inclusive_time, callers = self.stats.stats[func]
+            (primitive_calls, total_calls,
+             exclusive_time, inclusive_time, callers) = self.stats.stats[func]
 
             row = wrapTag('tr', ''.join(
                 wrapTag('td', cell) for cell in (
@@ -186,7 +189,9 @@ class MyHandler(BaseHTTPRequestHandler):
 
         data = INDEX_PAGE_HTML.format(
             filename=self.filename, total_time=formatTime(self.total_time),
-            filter_exp=filter_exp, table='\n'.join(table))
+            filter_exp=filter_exp,
+            filter_param=('&filter=%s' % filter_exp) if filter_exp else '',
+            table='\n'.join(table))
         self.wfile.write(data)
 
     def func(self, id):
@@ -198,7 +203,8 @@ class MyHandler(BaseHTTPRequestHandler):
         callees = self.stats.all_callees[func]
 
         def sortedByInclusive(items):
-            sortable = [(ct, (f, (cc, nc, tt, ct))) for f, (cc, nc, tt, ct) in items]
+            sortable = [(ct, (f, (cc, nc, tt, ct)))
+                        for f, (cc, nc, tt, ct) in items]
             return [y for x, y in sorted(sortable, reverse=True)]
 
         def buildFunctionTable(items):
