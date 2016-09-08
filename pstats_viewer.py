@@ -69,7 +69,32 @@ class MyHandler(BaseHTTPRequestHandler):
             self.id_to_func[i] = func
             self.func_to_id[func] = i
 
+        self.routes = self.setup_routes()
         BaseHTTPRequestHandler.__init__(self, *args, **kw)
+
+    def setup_routes(self):
+        routes = {}
+        for method_name in dir(self):
+            method = getattr(self, method_name)
+            if method.__doc__ is None:
+                continue
+            if method.__doc__.startswith('handle:'):
+                _handle, path_re = method.__doc__.split(':')
+                path_re = path_re.strip()
+                routes[path_re] = method
+        return routes
+
+    def _find_handler(self, path):
+        for path_re, method in self.routes.iteritems():
+            match_obj = re.match(path_re, path)
+            if match_obj is None:
+                print 'did not handle %s with %s' % (path, path_re)
+                continue
+            print 'handling %s with %s (%s)' % (
+                path, path_re, match_obj.groups())
+            return method, match_obj
+        print 'no handler for %s' % path
+        return None, None
 
     def do_GET(self):
         path, query = urlparse.urlsplit(self.path)[2:4]
@@ -80,42 +105,29 @@ class MyHandler(BaseHTTPRequestHandler):
             key, value = elt.split('=', 1)
             self.query[key] = value
 
-        for methodName in dir(self):
-            method = getattr(self, methodName)
-            if method.__doc__ is None:
-                continue
-            if method.__doc__.startswith('handle:'):
-                handle, path_re = method.__doc__.split(':')
-                path_re = path_re.strip()
-                mo = re.match(path_re, path)
-                if mo is None:
-                    print 'did not handle %s with %s' % (path, path_re)
-                    continue
-                print 'handling %s with %s (%s)' % (path, path_re, mo.groups())
+        method, mo = self._find_handler(path)
+        if not method:
+            self.send_response(404)
 
-                try:
-                    temp = StringIO()
-                    original_wfile = self.wfile
-                    self.wfile = temp
-                    try:
-                        method(*mo.groups())
-                    finally:
-                        self.wfile = original_wfile
+        try:
+            temp = StringIO()
+            original_wfile = self.wfile
+            self.wfile = temp
+            try:
+                method(*mo.groups())
+            finally:
+                self.wfile = original_wfile
 
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/html')
-                    self.send_header('Cache-Control', 'no-cache')
-                    self.end_headers()
-                    self.wfile.write(temp.getvalue())
-                except Exception:
-                    self.send_response(500)
-                    self.send_header('Content-Type', 'text/plain')
-                    self.end_headers()
-                    traceback.print_exc(file=self.wfile)
-                return
-
-        print 'no handler for %s' % path
-        self.send_response(404)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html')
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(temp.getvalue())
+        except Exception:
+            self.send_response(500)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            traceback.print_exc(file=self.wfile)
 
     def getFunctionLink(self, func):
         _file, _line, func_name = func
