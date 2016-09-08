@@ -7,7 +7,6 @@ import os.path
 import pstats
 import sys
 import re
-import threading
 import traceback
 import urllib
 import urlparse
@@ -236,13 +235,6 @@ class MyHandler(BaseHTTPRequestHandler):
         self.wfile.write(page)
 
 
-def startThread(fn):
-    thread = threading.Thread(target=fn)
-    thread.setDaemon(True)
-    thread.start()
-    return thread
-
-
 def main(argv):
     statsfile = argv[1]
     port = argv[2:]
@@ -256,10 +248,7 @@ def main(argv):
     httpd = HTTPServer(
         ('', port),
         lambda *a, **kw: MyHandler(stats, *a, **kw))
-    serve_thread = startThread(httpd.serve_forever)
-
-    while serve_thread.isAlive():
-        serve_thread.join(timeout=1)
+    httpd.serve_forever()
 
 
 if __name__ == '__main__':
