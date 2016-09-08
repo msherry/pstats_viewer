@@ -114,7 +114,7 @@ class MyHandler(BaseHTTPRequestHandler):
         self.send_response(404)
 
     def getFunctionLink(self, func):
-        _, _, func_name = func
+        _file, _line, func_name = func
         title = func_name
 
         return '<a title="%s" href="/func/%s">%s</a>' % (
@@ -172,6 +172,20 @@ class MyHandler(BaseHTTPRequestHandler):
         data = '''\
 <html>
 <head>
+<script type="text/javascript">
+function querySt(fn) {
+  qry = window.location.search.substring(1);
+  gy = qry.split("&");
+
+  for (i=0;i<gy.length;i++) {
+      ft = gy[i].split("=");
+      if (ft[0] == fn) {
+          return decodeURIComponent(ft[1]);
+      }
+  }
+  return "";
+}
+</script>
 <style type="text/css">
   form {
     display: inline;
@@ -191,11 +205,13 @@ class MyHandler(BaseHTTPRequestHandler):
 </ul>
 
 <form action=/>
-  Filter: <br>
-  <input type="text" name="filter" method="GET" /><br>
+  Regex filter: <br>
+  <input type="text" name="filter" method="GET" id="formField"/><br>
   <input type="submit" /><br>
 </form>
-
+<script type="text/javascript">
+  document.getElementById("formField").value = querySt("filter");
+</script>
 <table>
 <tr>
   <th>file:line:function</th>
@@ -223,7 +239,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
         def sortedByInclusive(items):
             sortable = [(ct, (f, (cc, nc, tt, ct))) for f, (cc, nc, tt, ct) in items]
-            return [y for x, y in reversed(sorted(sortable))]
+            return [y for x, y in sorted(sortable, reverse=True)]
 
         def buildFunctionTable(items):
             callersTable = []

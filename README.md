@@ -8,7 +8,7 @@ this data in a simple web-based tool.
 
 Based on the
 [original](https://chadaustin.me/2008/05/open-sourced-our-pstats-viewer/)
-released by IMVU.
+released by IMVU with some enhancements and fixes.
 
 ![screenshot of pstats\_viewer](/docs/pstats_screenshot.png?raw=true)
 
