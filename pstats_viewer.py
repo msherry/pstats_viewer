@@ -59,7 +59,7 @@ def formatTimeAndPercent(dt, total):
 
 
 class MyHandler(BaseHTTPRequestHandler):
-    def __init__(self, stats=None, *args, **kw):
+    def __init__(self, stats=None, *args, **kwargs):
         self.stats = stats
         self.stats.calc_callees()
         self.total_time = self.stats.total_tt
@@ -74,7 +74,7 @@ class MyHandler(BaseHTTPRequestHandler):
             self.func_to_id[func] = i
 
         self.routes = self.setup_routes()
-        BaseHTTPRequestHandler.__init__(self, *args, **kw)
+        BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def setup_routes(self):
         routes = {}
@@ -200,9 +200,9 @@ class MyHandler(BaseHTTPRequestHandler):
             table='\n'.join(table))
         self.wfile.write(data)
 
-    def func(self, id):
+    def func(self, func_id):
         'handle: /func/(.*)$'
-        func_id = int(id)
+        func_id = int(func_id)
         func = self.id_to_func[func_id]
 
         f_cc, f_nc, f_tt, f_ct, callers = self.stats.stats[func]
@@ -254,7 +254,7 @@ def main(argv):
 
     httpd = HTTPServer(
         ('', port),
-        lambda *a, **kw: MyHandler(stats, *a, **kw))
+        lambda *a, **kwargs: MyHandler(stats, *a, **kwargs))
     httpd.serve_forever()
 
 

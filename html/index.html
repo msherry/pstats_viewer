@@ -1,38 +1,38 @@
 <html>
-<head>
-<style type="text/css">
-  form {{
-    display: inline;
-    padding: 0px;
-    spacing: 0px;
-    overflow: hidden;
-  }}
-  table {{
-    display: inline;
-  }}
-</style>
-</head>
-<body>
-<h1>{filename}</h1>
-<ul>
-<li>Total time: {total_time}</li>
-</ul>
-<form action=/>
-  Regex filter: <br>
-  <input type="text" name="filter" method="GET" value="{filter_exp}"/><br>
-  <input type="submit" /><br>
+  <head>
+    <style type="text/css">
+      form {{
+        display: inline;
+        padding: 0px;
+        spacing: 0px;
+        overflow: hidden;
+      }}
+      table {{
+        display: inline;
+      }}
+    </style>
+  </head>
+  <body>
+    <h1>{filename}</h1>
+    <ul>
+      <li>Total time: {total_time}</li>
+    </ul>
+    <form action=/>
+    Regex filter: <br>
+    <input type="text" name="filter" method="GET" value="{filter_exp}"/><br>
+    <input type="submit" /><br>
 </form>
 <table>
-<tr>
-  <th>file:line:function</th>
-  <th><a href="?sort=tt{filter_param}">exclusive time</a></th>
-  <th><a href="?sort=ct{filter_param}">inclusive time</a></th>
-  <th><a href="?sort=cc{filter_param}">primitive calls</a></th>
-  <th><a href="?sort=nc{filter_param}">total calls</a></th>
-  <th><a href="?sort=epc{filter_param}">exclusive per call</th>
-  <th><a href="?sort=ipc{filter_param}">inclusive per call</th>
-</tr>
-{table}
+  <tr>
+    <th>file:line:function</th>
+    <th><a href="?sort=tt{filter_param}">exclusive time</a></th>
+    <th><a href="?sort=ct{filter_param}">inclusive time</a></th>
+    <th><a href="?sort=cc{filter_param}">primitive calls</a></th>
+    <th><a href="?sort=nc{filter_param}">total calls</a></th>
+    <th><a href="?sort=epc{filter_param}">exclusive per call</th>
+    <th><a href="?sort=ipc{filter_param}">inclusive per call</th>
+  </tr>
+  {table}
 </table>
 </body>
 </html>
