@@ -10,7 +10,8 @@ Based on the
 [original](https://chadaustin.me/2008/05/open-sourced-our-pstats-viewer/)
 released by IMVU with some enhancements and fixes.
 
-![screenshot of pstats\_viewer](/docs/pstats_screenshot.png?raw=true)
+![screenshot of index](/docs/pstats_index.png?raw=true)
+![screenshot of detail](/docs/pstats_detail.png?raw=true)
 
 ## Getting Started
 
