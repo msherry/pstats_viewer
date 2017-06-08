@@ -2,7 +2,7 @@
 
 An interactive browser for Python's cProfile output in pstats format.
 
-Profile's cProfile module is great for collecting profiling data on Python
+Python's cProfile module is great for collecting profiling data on Python
 programs, but interpreting the output isn't easy. This tool allows for browsing
 this data in a simple web-based tool.
 
