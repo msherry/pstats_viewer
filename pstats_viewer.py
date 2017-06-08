@@ -13,7 +13,7 @@ import urlparse
 
 PORT = 4040
 
-DIR = os.path.dirname(__file__)
+DIR = os.path.dirname(os.path.realpath(__file__))
 
 INDEX_PAGE_HTML = open(os.path.join(DIR, 'html/index.html')).read()
 
