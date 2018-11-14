@@ -1,7 +1,17 @@
 #!/usr/bin/env python
 
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-from StringIO import StringIO
+from __future__ import print_function
+
+try:
+    # Python 2
+    from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+    from StringIO import StringIO
+    import urlparse
+except ImportError:
+    # Python 3
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from io import StringIO
+    import urllib.parse as urlparse
 
 import os.path
 import pstats
@@ -9,7 +19,6 @@ import sys
 import re
 import traceback
 import urllib
-import urlparse
 
 PORT = 4040
 
@@ -41,7 +50,7 @@ def wrapTag(tag, body, **kwargs):
     attrs = ''
     if kwargs:
         attrs = ' ' + ' '.join('%s="%s"' % (key, value)
-                               for key, value in kwargs.iteritems())
+                               for key, value in kwargs.items())
     open_tag = '<%s%s>' % (tag, attrs)
     return '%s%s</%s>' % (open_tag, body, tag)
 
@@ -89,15 +98,15 @@ class MyHandler(BaseHTTPRequestHandler):
         return routes
 
     def _find_handler(self, path):
-        for path_re, method in self.routes.iteritems():
+        for path_re, method in self.routes.items():
             match_obj = re.match(path_re, path)
             if match_obj is None:
-                print 'did not handle %s with %s' % (path, path_re)
+                print('did not handle %s with %s' % (path, path_re))
                 continue
-            print 'handling %s with %s (%s)' % (
-                path, path_re, match_obj.groups())
+            print('handling %s with %s (%s)' % (
+                path, path_re, match_obj.groups()))
             return method, match_obj
-        print 'no handler for %s' % path
+        print('no handler for %s' % path)
         return None, None
 
     def getFunctionLink(self, func):
@@ -134,7 +143,7 @@ class MyHandler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'text/html')
             self.send_header('Cache-Control', 'no-cache')
             self.end_headers()
-            self.wfile.write(temp.getvalue())
+            self.wfile.write(temp.getvalue().encode('utf8'))
         except Exception:
             self.send_response(500)
             self.send_header('Content-Type', 'text/plain')
@@ -147,7 +156,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
         sort_index = ['cc', 'nc', 'tt', 'ct', 'epc', 'ipc'].index(
             self.query.get('sort', 'ct'))
-        print 'sort_index', sort_index
+        print('sort_index', sort_index)
 
         # EPC/IPC (exclusive/inclusive per call) are fake fields that need to
         # be calculated
@@ -174,7 +183,7 @@ class MyHandler(BaseHTTPRequestHandler):
         filter_exp = self.query.get('filter', '')
         if filter_exp:
             filter_exp = urllib.unquote(filter_exp)
-            print 'filter_exp:', filter_exp
+            print('filter_exp:', filter_exp)
         for func in self.print_list:
             if filter_exp and not re.search(filter_exp, formatfunc(func)):
                 continue
