@@ -232,7 +232,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
         data = INDEX_PAGE_HTML.format(
             filename=self.filename, total_time=formatTime(self.total_time),
-            filter_exp=filter_exp,
+            filter_exp=filter_exp or '',
             filter_param=('&filter=%s' % filter_exp) if filter_exp else '',
             table='\n'.join(table))
         self.wfile.write(data)
