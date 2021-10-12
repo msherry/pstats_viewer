@@ -4,9 +4,9 @@ from __future__ import print_function
 
 try:
     # Python 2
-    from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-    from StringIO import StringIO
     import urlparse
+    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+    from StringIO import StringIO
 except ImportError:
     # Python 3
     from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -15,10 +15,16 @@ except ImportError:
 
 import os.path
 import pstats
-import sys
 import re
+import sys
 import traceback
 import urllib
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Callable, Dict, List, Match, Optional, Tuple
+    FuncType = Tuple[str, str, str]
+
 
 PORT = 4040
 
@@ -40,6 +46,7 @@ def shrink(s):
 
 
 def formatfunc(func):
+    # type: (FuncType) -> str
     file, line, func_name = func
     containing_dir = os.path.basename(os.path.dirname(file).rstrip('/'))
     return '%s:%s:%s' % (os.path.join(containing_dir, os.path.basename(file)),
@@ -86,6 +93,7 @@ class MyHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def setup_routes(self):
+        # type: () -> Dict[str, Callable]
         routes = {}
         for method_name in dir(self):
             method = getattr(self, method_name)
@@ -98,6 +106,7 @@ class MyHandler(BaseHTTPRequestHandler):
         return routes
 
     def _find_handler(self, path):
+        # type: (str) -> Tuple[Optional[Callable], Optional[Match[str]]]
         for path_re, method in self.routes.items():
             match_obj = re.match(path_re, path)
             if match_obj is None:
@@ -106,18 +115,36 @@ class MyHandler(BaseHTTPRequestHandler):
             print('handling %s with %s (%s)' % (
                 path, path_re, match_obj.groups()))
             return method, match_obj
+
+        # This can happen for things like /favicon.ico, so we can't just abort
         print('no handler for %s' % path)
         return None, None
 
-    def getFunctionLink(self, func):
+
+    def _filter_exp_from_query(self):
+        # type: () -> Optional[str]
+        filter_exp = self.query.get('filter', None)
+        if filter_exp:
+            filter_exp = urllib.unquote(filter_exp)
+        return filter_exp
+
+    def _filter_query_from_exp(self, filter_exp):
+        # type: (Optional[str]) -> str
+        return '?filter={}'.format(filter_exp) if filter_exp else ''
+
+    def get_function_link(self, func, filter_exp):
+        # type: (FuncType, Optional[str]) -> str
         _file, _line, func_name = func
         title = func_name
         func_id = self.func_to_id[func]
+        filter_query = self._filter_query_from_exp(filter_exp)
 
         return wrapTag(
-            'a', formatfunc(func), title=title, href='/func/%s' % func_id)
+            'a', formatfunc(func), title=title, href='/func/{func_id}{filter_query}'.format(
+                func_id=func_id, filter_query=filter_query))
 
     def do_GET(self):
+        # type: () -> None
         path, query = urlparse.urlsplit(self.path)[2:4]
         self.query = {}
         for elt in query.split('&'):
@@ -151,6 +178,7 @@ class MyHandler(BaseHTTPRequestHandler):
             traceback.print_exc(file=self.wfile)
 
     def index(self):
+        # type: () -> None
         'handle: /$'
         table = []
 
@@ -178,11 +206,11 @@ class MyHandler(BaseHTTPRequestHandler):
             )
         else:
             # Shouldn't get here
-            pass
+            raise ValueError('Invalid sort_index: {}'.format(sort_index))
 
-        filter_exp = self.query.get('filter', '')
+
+        filter_exp = self._filter_exp_from_query()
         if filter_exp:
-            filter_exp = urllib.unquote(filter_exp)
             print('filter_exp:', filter_exp)
         for func in self.print_list:
             if filter_exp and not re.search(filter_exp, formatfunc(func)):
@@ -192,7 +220,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
             row = wrapTag('tr', ''.join(
                 wrapTag('td', cell) for cell in (
-                    self.getFunctionLink(func),
+                    self.get_function_link(func, filter_exp),
                     formatTimeAndPercent(exclusive_time, self.total_time),
                     formatTimeAndPercent(inclusive_time, self.total_time),
                     primitive_calls,
@@ -209,10 +237,14 @@ class MyHandler(BaseHTTPRequestHandler):
             table='\n'.join(table))
         self.wfile.write(data)
 
-    def func(self, func_id):
+    def func(self, func_id_str):
+        # type: (str) -> None
         'handle: /func/(.*)$'
-        func_id = int(func_id)
+        # func_id_str may also include query params
+
+        func_id = int(func_id_str)
         func = self.id_to_func[func_id]
+        filter_exp = self._filter_exp_from_query()
 
         f_cc, f_nc, f_tt, f_ct, callers = self.stats.stats[func]
         callees = self.stats.all_callees[func]
@@ -222,14 +254,15 @@ class MyHandler(BaseHTTPRequestHandler):
                         for f, (cc, nc, tt, ct) in items]
             return [y for x, y in sorted(sortable, reverse=True)]
 
-        def buildFunctionTable(items):
+        def build_function_table(items, filter_exp):
+            # type: (List, Optional[str]) -> str
             callersTable = []
             for caller, (cc, nc, tt, ct) in sortedByInclusive(items):
                 tag = wrapTag(
                     'tr', ''.join(
                         wrapTag('td', cell)
                         for cell in (
-                            self.getFunctionLink(caller),
+                            self.get_function_link(caller, filter_exp),
                             formatTimeAndPercent(tt, self.total_time),
                             formatTimeAndPercent(ct, self.total_time),
                             cc,
@@ -241,12 +274,13 @@ class MyHandler(BaseHTTPRequestHandler):
             return '\n'.join(callersTable)
 
         caller_stats = [(c, self.stats.stats[c][:4]) for c in callers]
-        callersTable = buildFunctionTable(caller_stats)
-        calleesTable = buildFunctionTable(callees.items())
+        callersTable = build_function_table(caller_stats, filter_exp)
+        calleesTable = build_function_table(callees.items(), filter_exp)
 
         page = FUNCTION_PAGE_HTML.format(
-            func=formatfunc(func), primitive=f_cc, total=f_nc, exclusive=f_tt,
-            inclusive=f_ct, callers=callersTable, callees=calleesTable)
+            filter_query=self._filter_query_from_exp(filter_exp),
+            func=formatfunc(func), primitive=f_cc, total=f_nc,
+            exclusive=f_tt, inclusive=f_ct, callers=callersTable, callees=calleesTable)
 
         self.wfile.write(page)
 
