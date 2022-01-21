@@ -7,22 +7,23 @@ try:
     import urlparse
     from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
     from StringIO import StringIO
+    from urllib import unquote
 except ImportError:
     # Python 3
     from http.server import HTTPServer, BaseHTTPRequestHandler
     from io import StringIO
     import urllib.parse as urlparse
+    from urllib.parse import unquote
 
 import os.path
 import pstats
 import re
 import sys
 import traceback
-import urllib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Callable, Dict, List, Match, Optional, Tuple
+    from typing import Any, Callable, Dict, List, Match, Optional, Tuple
     FuncType = Tuple[str, str, str]
 
 
@@ -54,6 +55,7 @@ def formatfunc(func):
 
 
 def wrapTag(tag, body, **kwargs):
+    # type: (str, str, **str) -> str
     attrs = ''
     if kwargs:
         attrs = ' ' + ' '.join('%s="%s"' % (key, value)
@@ -63,10 +65,12 @@ def wrapTag(tag, body, **kwargs):
 
 
 def formatTime(dt):
+    # type: (float) -> str
     return '%.2fs' % dt
 
 
 def formatTimeAndPercent(dt, total):
+    # type: (float, float) -> str
     percent = '(%.1f%%)' % (100.0 * dt / total)
     if percent == '(0.0%)':
         percent = ''
@@ -75,7 +79,8 @@ def formatTimeAndPercent(dt, total):
 
 
 class MyHandler(BaseHTTPRequestHandler):
-    def __init__(self, stats=None, *args, **kwargs):
+    def __init__(self, stats, *args, **kwargs):
+        # type: (pstats.Stats, *Any, **Any) -> None
         self.stats = stats
         self.stats.calc_callees()
         self.total_time = self.stats.total_tt
@@ -125,7 +130,7 @@ class MyHandler(BaseHTTPRequestHandler):
         # type: () -> Optional[str]
         filter_exp = self.query.get('filter', None)
         if filter_exp:
-            filter_exp = urllib.unquote(filter_exp)
+            filter_exp = unquote(filter_exp)
         return filter_exp
 
     def _filter_query_from_exp(self, filter_exp):
@@ -156,6 +161,9 @@ class MyHandler(BaseHTTPRequestHandler):
         method, mo = self._find_handler(path)
         if not method:
             self.send_response(404)
+            return
+
+        assert mo is not None   # mypy
 
         try:
             temp = StringIO()
@@ -286,6 +294,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
 
 def main(argv):
+    # type: (List[str]) -> None
     statsfile = argv[1]
     port = argv[2:]
     if port == []:
