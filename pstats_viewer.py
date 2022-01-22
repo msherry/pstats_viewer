@@ -284,11 +284,13 @@ class MyHandler(BaseHTTPRequestHandler):
         caller_stats = [(c, self.stats.stats[c][:4]) for c in callers]
         callersTable = build_function_table(caller_stats, filter_exp)
         calleesTable = build_function_table(callees.items(), filter_exp)
+        selfTable = build_function_table([(func, (f_cc, f_nc, f_tt, f_ct))], filter_exp)
 
         page = FUNCTION_PAGE_HTML.format(
             filter_query=self._filter_query_from_exp(filter_exp),
             func=formatfunc(func), primitive=f_cc, total=f_nc,
-            exclusive=f_tt, inclusive=f_ct, callers=callersTable, callees=calleesTable)
+            exclusive=f_tt, inclusive=f_ct, callers=callersTable, self=selfTable,
+            callees=calleesTable)
 
         self.wfile.write(page)
 
