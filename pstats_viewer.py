@@ -183,7 +183,7 @@ class MyHandler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.send_header('Content-Type', 'text/plain')
             self.end_headers()
-            traceback.print_exc(file=self.wfile)
+            self.wfile.write(traceback.format_exc().encode('utf8'))
 
     def index(self):
         # type: () -> None
